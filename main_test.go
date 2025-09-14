@@ -10,53 +10,74 @@ import (
 )
 
 func TestCafeCount(t *testing.T) {
-    handler := http.HandlerFunc(mainHandle)
+	handler := http.HandlerFunc(mainHandle)
 
-    requests := []string{
-        "/cafe?city=moscow&count=0",
-        "/cafe?city=moscow&count=1",
-        "/cafe?city=moscow&count=2",
-		"/cafe?city=moscow&count=100",
-    }
-	requests := []struct {
-        count int   // передаваемое значение count
-        want  int   // ожидаемое количество кафе в ответе
-    }{
-        ...
-    } 
-    for _, v := range requests {
-        response := httptest.NewRecorder()
-        req := httptest.NewRequest("GET", v, nil)
+	testCases := []struct {
+		count string
+		want  int
+	}{
+		{"/cafe?city=moscow&count=0", 0},
+		{"/cafe?city=moscow&count=1", 1},
+		{"/cafe?city=moscow&count=2", 2},
+		{"/cafe?city=moscow&count=100", 5},
+	}
 
-        handler.ServeHTTP(response, req)
+	for _, tc := range testCases {
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", tc.count, nil)
 
-        assert.Equal(t, http.StatusOK, response.Code)
-        // пока сравнивать не будем, а просто выведем ответы
-        // удалите потом этот вывод
-        fmt.Println(response.Body.String())
-    }
-} 
+		handler.ServeHTTP(response, req)
+
+		resp := response.Body.String()
+
+		respnum := strings.Count(resp, ",") + 1
+
+		if resp == "" {
+			respnum = 0
+		}
+
+		assert.Equal(t, http.StatusOK, response.Code)
+		assert.Equal(t, tc.want, respnum, "Request: %s", tc.count)
+	}
+}
 
 func TestCafeSearch(t *testing.T) {
-    handler := http.HandlerFunc(mainHandle)
+	handler := http.HandlerFunc(mainHandle)
 
-    requests := []string{
-        "/cafe?count=2&city=moscow",
-        "/cafe?city=tula",
-        "/cafe?city=moscow&search=ложка",
-    }
-    for _, v := range requests {
-        response := httptest.NewRecorder()
-        req := httptest.NewRequest("GET", v, nil)
+	testCases := []struct {
+		count     string
+		wantCount int
+	}{
+		{"/cafe?city=moscow&search=фасоль", 0},
+		{"/cafe?city=moscow&search=кофе", 2},
+		{"/cafe?city=moscow&search=вилка", 1},
+	}
+	for _, v := range testCases {
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", v.count, nil)
 
-        handler.ServeHTTP(response, req)
+		handler.ServeHTTP(response, req)
 
-        assert.Equal(t, http.StatusOK, response.Code)
-        // пока сравнивать не будем, а просто выведем ответы
-        // удалите потом этот вывод
-        fmt.Println(response.Body.String())
-    }
-} 
+		resp := response.Body.String()
+		resp = strings.ToLower(resp)
+		respStrs := strings.Split(resp, ",")
+		respNum := 0
+		for _, z := range respStrs {
+			if strings.Contains(string(z), "фасоль") && strings.Contains(v.count, "фасоль") {
+				respNum++
+			}
+			if strings.Contains(string(z), "кофе") && strings.Contains(v.count, "кофе") {
+				respNum++
+			}
+			if strings.Contains(string(z), "вилка") && strings.Contains(v.count, "вилка") {
+				respNum++
+			}
+		}
+
+		assert.Equal(t, http.StatusOK, response.Code)
+		assert.Equal(t, v.wantCount, respNum, "Request: %s", v.count)
+	}
+}
 
 func TestCafeNegative(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
