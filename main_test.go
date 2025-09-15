@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCafeCount(t *testing.T) {
+	handler := http.HandlerFunc(mainHandle)
+
+	requests := []string{
+		"/cafe?city=moscow&city=tula&count=0",
+		"/cafe?city=moscow&city=tula&count=1",
+		"/cafe?city=moscow&city=tula&count=2",
+		"/cafe?city=moscow,tula&count=100",
+	}
+	for _, v := range requests {
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", v, nil)
+
+		handler.ServeHTTP(response, req)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+		// пока сравнивать не будем, а просто выведем ответы
+		// удалите потом этот вывод
+		fmt.Println(response.Body.String())
+	}
+}
+
+func TestCafeSearch(t *testing.T) {
+	handler := http.HandlerFunc(mainHandle)
+
+	requests := []string{
+		"/cafe?city=moscow&city=tula&search=фасоль",
+		"/cafe?city=moscow&city=tula&search=кофе",
+		"/cafe?city=moscow&city=tula&search=вилка",
+	}
+	for _, v := range requests {
+		response := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", v, nil)
+
+		handler.ServeHTTP(response, req)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+	}
+}
 func TestCafeNegative(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 
