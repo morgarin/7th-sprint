@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCafeCount(t *testing.T) {
@@ -28,6 +30,8 @@ func TestCafeCount(t *testing.T) {
 
 		handler.ServeHTTP(response, req)
 
+		require.Equal(t, http.StatusOK, response.Code)
+
 		resp := response.Body.String()
 
 		respnum := strings.Count(resp, ",") + 1
@@ -36,7 +40,6 @@ func TestCafeCount(t *testing.T) {
 			respnum = 0
 		}
 
-		assert.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, tc.want, respnum, "Request: %s", tc.count)
 	}
 }
@@ -45,37 +48,39 @@ func TestCafeSearch(t *testing.T) {
 	handler := http.HandlerFunc(mainHandle)
 
 	testCases := []struct {
-		count     string
+		search    string
 		wantCount int
 	}{
-		{"/cafe?city=moscow&search=фасоль", 0},
-		{"/cafe?city=moscow&search=кофе", 2},
-		{"/cafe?city=moscow&search=вилка", 1},
+		{"фасоль", 0},
+		{"кофе", 2},
+		{"вилка", 1},
 	}
 	for _, v := range testCases {
 		response := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", v.count, nil)
+		request := fmt.Sprintf("/cafe?city=moscow&search=%s", v.search)
+		req := httptest.NewRequest("GET", request, nil)
 
 		handler.ServeHTTP(response, req)
+
+		require.Equal(t, http.StatusOK, response.Code)
 
 		resp := response.Body.String()
 		resp = strings.ToLower(resp)
 		respStrs := strings.Split(resp, ",")
 		respNum := 0
 		for _, z := range respStrs {
-			if strings.Contains(string(z), "фасоль") && strings.Contains(v.count, "фасоль") {
-				respNum++
-			}
-			if strings.Contains(string(z), "кофе") && strings.Contains(v.count, "кофе") {
-				respNum++
-			}
-			if strings.Contains(string(z), "вилка") && strings.Contains(v.count, "вилка") {
+			if strings.Contains(z, v.search) {
 				respNum++
 			}
 		}
-
-		assert.Equal(t, http.StatusOK, response.Code)
-		assert.Equal(t, v.wantCount, respNum, "Request: %s", v.count)
+		lenResp := len(respStrs)
+		if resp == "" {
+			lenResp = 0
+		}
+		//Quantity check
+		assert.Equal(t, v.wantCount, lenResp, "Request: %s", request)
+		//Search contains check
+		assert.Equal(t, v.wantCount, respNum, "Request: %s", request)
 	}
 }
 
